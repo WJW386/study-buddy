@@ -1,27 +1,15 @@
 <template>
-  <van-card
-      v-for="user in userList"
-      :desc="user.userProfile"
-      :title="`${user.username} (${user.webId})`"
-      :thumb="user.avatarUrl"
-  >
-    <template #tags>
-      <van-tag plain type="danger" v-for="tag in tags" style="margin-right: 8px; margin-top: 8px" >
-        {{tag}}
-      </van-tag>
-    </template>
-    <template #footer>
-      <van-button size="mini">联系方式</van-button>
-    </template>
-  </van-card>
+  <user-card-list :user-list = "userList"/>
+  <van-empty v-if="!userList || userList.length < 1" description="搜索结果为空"/>
 </template>
 
 <script setup >
 import {onMounted, ref} from "vue";
 import {useRoute} from "vue-router";
 import qs from 'qs';
-import myAxios from "../plugins/myAxios.js";
+import myAxios from "../plugins/myAxios.ts";
 import {Toast} from "vant";
+import UserCardList from "../components/UserCardList.vue";
 
 const route = useRoute();
 const {tags} = route.query;
@@ -47,7 +35,7 @@ onMounted(async () => {
       .then(function (response) {
         console.log('/user/search/tags succeed',response);
         Toast.success('请求成功');
-        return response.data?.data
+        return response?.data
       })
       .catch(function (error) {
         console.log('/user/search/tags error',error);

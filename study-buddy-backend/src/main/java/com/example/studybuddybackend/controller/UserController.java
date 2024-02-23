@@ -1,6 +1,7 @@
 package com.example.studybuddybackend.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.example.studybuddybackend.common.BaseResponse;
 import com.example.studybuddybackend.common.ErrorCode;
 import com.example.studybuddybackend.common.ResultUtils;
@@ -19,7 +20,6 @@ import javax.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.example.studybuddybackend.constant.UserConstant.ADMIN_ROLE;
 import static com.example.studybuddybackend.constant.UserConstant.USER_LOGIN_STATE;
 
 /**
@@ -74,7 +74,7 @@ public class UserController {
         }
 
         String userAccount = userLoginRequest.getUserAccount();
-        String password = userLoginRequest.getPassword();
+        String password = userLoginRequest.getUserPassword();
         System.out.println(password);
         if (StringUtils.isAnyBlank(userAccount, password)) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
@@ -95,7 +95,7 @@ public class UserController {
 
     @GetMapping("/search")
     public BaseResponse<List<User>> searchUsers(String username, HttpServletRequest request) {
-        if (!isAdmin(request)) {
+        if (!userService.isAdmin(request)) {
             throw new BusinessException(ErrorCode.NOT_AUTH);
         }
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
@@ -119,7 +119,7 @@ public class UserController {
     @PostMapping("/delete")
     public BaseResponse<Boolean> deleteUser(@RequestBody UserDeleteRequest userDeleteRequest, HttpServletRequest request) {
         long id = userDeleteRequest.getId();
-        if (!isAdmin(request)) {
+        if (!userService.isAdmin(request)) {
             throw new BusinessException(ErrorCode.NOT_AUTH);
         }
 
@@ -130,9 +130,21 @@ public class UserController {
         return ResultUtils.success(result);
     }
 
-    private boolean isAdmin(HttpServletRequest request) {
-        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
-        User user = (User) userObj;
-        return user != null || user.getUserRole() == ADMIN_ROLE;
+    @PostMapping("/update")
+    public BaseResponse<Integer> updateUser(@RequestBody User user, HttpServletRequest request) {
+        if (user == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        int result = userService.updateUser(user, loginUser);
+        return ResultUtils.success(result);
     }
+
+    @GetMapping("/recommend")
+    public BaseResponse<Page<User>> recommend(int pageSize, int pageNum) {
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        Page<User> userList = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
+        return ResultUtils.success(userList);
+    }
+
 }

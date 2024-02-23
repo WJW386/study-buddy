@@ -41,6 +41,7 @@ public interface UserService extends IService<User> {
 
     /**
      * 用户注销
+     * @param request 从前端接收请求中的登录信息
      * @return 是否注销成功
      */
     int userLogout(HttpServletRequest request);
@@ -52,4 +53,37 @@ public interface UserService extends IService<User> {
      * @return 带有所有在列表中标签的用户
      */
     List<User> searchUserByTags(List<String> tagNameList);
+
+    /**
+     * 更改用户信息
+     *
+     * @param user 前端传输用户
+     * @param loginUser 登录用户
+     * @return 是否更新成功
+     */
+    int updateUser(User user, User loginUser);
+
+    /**
+     * 判断当前用户是否为管理员
+     *
+     * @param request 从前端接收请求中的登录信息
+     * @return 是否为管理员
+     */
+    boolean isAdmin(HttpServletRequest request);
+
+    /**
+     * 判断当前用户是否为管理员
+     *
+     * @param user 当前登录用户
+     * @return 是否为管理员
+     */
+    boolean isAdmin(User user);
+
+    /**
+     * 得到当前登录用户
+     *
+     * @param request 从前端接收请求中的登录信息
+     * @return 当前登录用户
+     */
+    User getLoginUser(HttpServletRequest request);
 }

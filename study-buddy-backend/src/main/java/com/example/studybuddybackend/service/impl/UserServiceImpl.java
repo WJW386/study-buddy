@@ -25,8 +25,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static com.example.studybuddybackend.constant.UserConstant.SALT;
-import static com.example.studybuddybackend.constant.UserConstant.USER_LOGIN_STATE;
+import static com.example.studybuddybackend.constant.UserConstant.*;
 
 
 /**
@@ -195,6 +194,51 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             }
             return true;
         }).map(this::getSafeUser).collect(Collectors.toList());
+    }
+
+    @Override
+    public int updateUser(User user, User loginUser) {
+        // 如果用户没有传任何要更新的值，就直接报错，不用执行 update 语句
+        if (user.getUsername() == null && user.getEmail() == null && user.getAvatarUrl() == null
+            && user.getPhone() == null) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        long id = user.getId();
+        if (id < 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        if (!isAdmin(loginUser) && loginUser.getId() != id) {
+            throw new BusinessException(ErrorCode.NOT_AUTH);
+        }
+        User userOld = userMapper.selectById(id);
+        if (userOld == null) {
+            throw new BusinessException(ErrorCode.NULL_ERROR);
+        }
+        return userMapper.updateById(user);
+    }
+
+    @Override
+    public boolean isAdmin(HttpServletRequest request) {
+        Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
+        User user = (User) userObj;
+        return user != null || user.getUserRole() == ADMIN_ROLE;
+    }
+
+    @Override
+    public boolean isAdmin(User user) {
+        return user != null || user.getUserRole() == ADMIN_ROLE;
+    }
+
+    @Override
+    public User getLoginUser(HttpServletRequest request) {
+        if (request == null) {
+            return null;
+        }
+        User user = (User) request.getSession().getAttribute(USER_LOGIN_STATE);
+        if (user == null) {
+            throw new BusinessException(ErrorCode.NOT_AUTH);
+        }
+        return user;
     }
 }
 
