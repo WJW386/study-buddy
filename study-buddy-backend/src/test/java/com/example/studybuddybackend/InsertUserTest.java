@@ -1,4 +1,4 @@
-package com.example.studybuddybackend;
+package com.example.studybuddybackend;//package com.example.studybuddybackend;
 
 import com.example.studybuddybackend.model.domain.User;
 import com.example.studybuddybackend.service.UserService;
@@ -14,8 +14,8 @@ import java.util.concurrent.*;
 /**
  * @author Willow
  **/
-@SpringBootTest
-public class InsertUserTest {
+//@SpringBootTest
+//public class InsertUserTest {
 //    @Resource
 //    UserService userService;
 //
@@ -99,4 +99,4 @@ public class InsertUserTest {
 //        stopWatch.stop();
 //        System.out.println(stopWatch.getLastTaskTimeMillis());
 //    }
-}
+//}

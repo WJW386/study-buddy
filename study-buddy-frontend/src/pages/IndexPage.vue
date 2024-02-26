@@ -21,10 +21,10 @@ const userList = ref([]);
 onMounted(async () => {
   // 为给定 ID 的 user 创建请求
   const userListData = await myAxios.get('/user/recommend',{
-    withCredentials: false,
+    withCredentials: true,
     params: {
       pageSize: 6,
-      pageNum: 1
+      pageNum: 1,
     },
 
   })

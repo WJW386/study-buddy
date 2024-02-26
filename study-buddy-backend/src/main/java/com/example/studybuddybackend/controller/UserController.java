@@ -11,13 +11,17 @@ import com.example.studybuddybackend.model.domain.request.UserDeleteRequest;
 import com.example.studybuddybackend.model.domain.request.UserLoginRequest;
 import com.example.studybuddybackend.model.domain.request.UserRegisterRequest;
 import com.example.studybuddybackend.service.UserService;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 import static com.example.studybuddybackend.constant.UserConstant.USER_LOGIN_STATE;
@@ -30,10 +34,14 @@ import static com.example.studybuddybackend.constant.UserConstant.USER_LOGIN_STA
 @RestController
 @RequestMapping("/user")
 @CrossOrigin("http://localhost:5173/")
+@Slf4j
 public class UserController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private RedisTemplate<String, Object> redisTemplate;
 
     @GetMapping("/current")
     public BaseResponse<User> getCurrentUser(HttpServletRequest servletRequest) {
@@ -141,10 +149,27 @@ public class UserController {
     }
 
     @GetMapping("/recommend")
-    public BaseResponse<Page<User>> recommend(int pageSize, int pageNum) {
+    public BaseResponse<Page<User>> recommendUsers(int pageSize, int pageNum, HttpServletRequest request) {
+        User user = userService.getLoginUser(request);
+
+        String recommendKey = String.format("study:user:recommend:%s", user.getId());
+        ValueOperations<String, Object> valueOperations = redisTemplate.opsForValue();
+        Page<User> userPage = (Page<User>) valueOperations.get(recommendKey);
+        // 如果缓存中有，则直接读取
+        if (userPage != null) {
+            return ResultUtils.success(userPage);
+        }
+
         QueryWrapper<User> queryWrapper = new QueryWrapper<>();
-        Page<User> userList = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
-        return ResultUtils.success(userList);
+        userPage = userService.page(new Page<>(pageNum, pageSize), queryWrapper);
+        // 如果缓存中没有，则存入缓存
+        try {
+            valueOperations.set(recommendKey, userPage, 30, TimeUnit.SECONDS);
+        } catch (Exception e) {
+            log.error("redis set key error", e);
+        }
+
+        return ResultUtils.success(userPage);
     }
 
 }
