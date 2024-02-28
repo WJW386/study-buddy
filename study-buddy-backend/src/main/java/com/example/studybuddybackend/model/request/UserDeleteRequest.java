@@ -1,4 +1,4 @@
-package com.example.studybuddybackend.model.domain.request;
+package com.example.studybuddybackend.model.request;
 
 import lombok.Data;
 
