@@ -2,12 +2,15 @@ package com.example.studybuddybackend.model.dto;
 
 import com.example.studybuddybackend.common.PageRequest;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 
 import java.util.Date;
+import java.util.List;
 
 /**
  * @author Willow
  **/
+@EqualsAndHashCode(callSuper = true)
 @Data
 public class TeamQuery extends PageRequest {
 
@@ -16,6 +19,11 @@ public class TeamQuery extends PageRequest {
      * id
      */
     private Long id;
+
+    /**
+     * id 列表
+     */
+    private List<Long> idList;
 
     /**
      * 队伍名称
@@ -33,11 +41,6 @@ public class TeamQuery extends PageRequest {
     private Integer maxNum;
 
     /**
-     * 过期时间
-     */
-    private Date expireTime;
-
-    /**
      * 用户id
      */
     private Long userId;
@@ -46,4 +49,10 @@ public class TeamQuery extends PageRequest {
      * 0 - 公开，1 - 私有，2 - 加密
      */
     private Integer status;
+
+    /**
+     * 搜索关键词（同时对队伍名称和描述搜索）
+     */
+    private String searchText;
+
 }

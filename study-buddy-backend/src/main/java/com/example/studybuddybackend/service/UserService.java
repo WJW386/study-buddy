@@ -2,6 +2,7 @@ package com.example.studybuddybackend.service;
 
 import com.example.studybuddybackend.model.domain.User;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.example.studybuddybackend.model.request.TeamJoinRequest;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
