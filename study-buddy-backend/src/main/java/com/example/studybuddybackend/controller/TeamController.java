@@ -10,9 +10,7 @@ import com.example.studybuddybackend.exception.BusinessException;
 import com.example.studybuddybackend.model.domain.Team;
 import com.example.studybuddybackend.model.domain.User;
 import com.example.studybuddybackend.model.dto.TeamQuery;
-import com.example.studybuddybackend.model.request.TeamAddRequest;
-import com.example.studybuddybackend.model.request.TeamJoinRequest;
-import com.example.studybuddybackend.model.request.TeamUpdateRequest;
+import com.example.studybuddybackend.model.request.*;
 import com.example.studybuddybackend.model.vo.TeamUserVO;
 import com.example.studybuddybackend.service.TeamService;
 import com.example.studybuddybackend.service.UserService;
@@ -51,18 +49,6 @@ public class TeamController {
         long teamId = teamService.addTeam(team, loginUser);
 
         return ResultUtils.success(teamId);
-    }
-
-    @PostMapping("/delete")
-    public BaseResponse<Boolean> deleteTeam(@RequestBody long id) {
-        if (id <= 0) {
-            throw new BusinessException(ErrorCode.NULL_ERROR);
-        }
-        boolean result = teamService.removeById(id);
-        if (!result) {
-            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除队伍失败");
-        }
-        return ResultUtils.success(true);
     }
 
     @PostMapping("/update")
@@ -120,6 +106,36 @@ public class TeamController {
         }
         User loginUser = userService.getLoginUser(request);
         boolean result = teamService.joinTeam(teamJoinRequest, loginUser);
-        return ResultUtils.success(result);
+        if (!result) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "加入失败");
+        }
+        return ResultUtils.success(true);
+    }
+
+    @PostMapping("/quit")
+    public BaseResponse<Boolean> quitTeam(@RequestBody TeamQuitRequest teamQuitRequest, HttpServletRequest request) {
+        if (teamQuitRequest == null) {
+            throw new BusinessException(ErrorCode.NULL_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        boolean result = teamService.quitTeam(teamQuitRequest, loginUser);
+        if (!result) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "退出失败");
+        }
+        return ResultUtils.success(true);
+    }
+
+    @PostMapping("/delete")
+    public BaseResponse<Boolean> deleteTeam(@RequestBody DeleteRequest deleteRequest, HttpServletRequest request) {
+        if (deleteRequest == null || deleteRequest.getId() <= 0) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+
+        User loginUser = userService.getLoginUser(request);
+        boolean result = teamService.deleteTeam(deleteRequest.getId(), loginUser);
+        if (!result) {
+            throw new BusinessException(ErrorCode.SYSTEM_ERROR, "删除失败");
+        }
+        return ResultUtils.success(true);
     }
 }

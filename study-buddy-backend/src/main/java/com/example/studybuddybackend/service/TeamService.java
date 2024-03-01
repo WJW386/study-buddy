@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.service.IService;
 import com.example.studybuddybackend.model.domain.User;
 import com.example.studybuddybackend.model.dto.TeamQuery;
 import com.example.studybuddybackend.model.request.TeamJoinRequest;
+import com.example.studybuddybackend.model.request.TeamQuitRequest;
 import com.example.studybuddybackend.model.request.TeamUpdateRequest;
 import com.example.studybuddybackend.model.vo.TeamUserVO;
 
@@ -52,4 +53,20 @@ public interface TeamService extends IService<Team> {
      * @return 是否加入队伍成功
      */
     boolean joinTeam(TeamJoinRequest teamJoinRequest, User loginUser);
+
+    /**
+     * 用户退出队伍
+     * @param teamQuitRequest 前端请求中的退出队伍信息
+     * @param loginUser 当前登录用户
+     * @return 是否退出队伍成功
+     */
+    boolean quitTeam(TeamQuitRequest teamQuitRequest, User loginUser);
+
+    /**
+     * 队长删除队伍
+     * @param id 队伍id
+     * @param loginUser 当前登录用户
+     * @return 是否删除队伍成功
+     */
+    boolean deleteTeam(long id, User loginUser);
 }
