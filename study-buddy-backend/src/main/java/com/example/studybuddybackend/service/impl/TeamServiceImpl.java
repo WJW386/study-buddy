@@ -188,6 +188,41 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
     }
 
     @Override
+    public List<TeamUserVO> listUserTeams(TeamQuery teamQuery) {
+        QueryWrapper<Team> queryWrapper = new QueryWrapper<>();
+        if (teamQuery != null) {
+            Long userId = teamQuery.getUserId();
+            if (userId != null && userId >= 0) {
+                queryWrapper.eq("user_id", userId);
+            }
+            List<Long> idList = teamQuery.getIdList();
+            if (!CollectionUtils.isEmpty(idList)) {
+                queryWrapper.in("id", idList);
+            }
+        }
+        // 不展示过期队伍
+        queryWrapper.and(qw -> qw.gt("expire_time", new Date()).or().isNull("expire_time"));
+        List<Team> teamList = this.list(queryWrapper);
+        if (CollectionUtils.isEmpty(teamList)) {
+            return new ArrayList<>();
+        }
+        List<TeamUserVO> list = new ArrayList<>();
+        for (Team team : teamList) {
+            TeamUserVO teamUserVO = new TeamUserVO();
+            BeanUtils.copyProperties(team, teamUserVO);
+            Long userId = team.getUserId();
+            User user = userService.getById(userId);
+            if (user != null) {
+                UserVO userVO = new UserVO();
+                BeanUtils.copyProperties(user, userVO);
+                teamUserVO.setCreatorVO(userVO);
+            }
+            list.add(teamUserVO);
+        }
+        return list;
+    }
+
+    @Override
     public boolean updateTeam(TeamUpdateRequest teamUpdateRequest, User loginUser) {
         boolean isAdmin =  userService.isAdmin(loginUser);
         Long id = teamUpdateRequest.getId();

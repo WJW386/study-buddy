@@ -10,6 +10,7 @@ import com.example.studybuddybackend.model.domain.User;
 import com.example.studybuddybackend.model.request.UserDeleteRequest;
 import com.example.studybuddybackend.model.request.UserLoginRequest;
 import com.example.studybuddybackend.model.request.UserRegisterRequest;
+import com.example.studybuddybackend.model.vo.UserVO;
 import com.example.studybuddybackend.service.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -170,6 +171,16 @@ public class UserController {
         }
 
         return ResultUtils.success(userPage);
+    }
+
+    @GetMapping("/match")
+    public BaseResponse<List<User>> matchUsers(long num, HttpServletRequest request) {
+        if (num <= 0 || num > 20) {
+            throw new BusinessException(ErrorCode.PARAMS_ERROR);
+        }
+        User loginUser = userService.getLoginUser(request);
+        List<User> userList = userService.matchUsers(num, loginUser);
+        return ResultUtils.success(userList);
     }
 
 }

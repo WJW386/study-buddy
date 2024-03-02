@@ -7,10 +7,13 @@ import com.example.studybuddybackend.exception.BusinessException;
 import com.example.studybuddybackend.mapper.UserMapper;
 import com.example.studybuddybackend.model.domain.User;
 import com.example.studybuddybackend.service.UserService;
+import com.example.studybuddybackend.utils.AlgorithmUtils;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import lombok.extern.slf4j.Slf4j;
+import net.bytebuddy.description.method.MethodDescription;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.math3.util.Pair;
 import org.springframework.stereotype.Service;
 import org.springframework.util.CollectionUtils;
 import org.springframework.util.DigestUtils;
@@ -19,7 +22,9 @@ import org.springframework.util.DigestUtils;
 import javax.annotation.Resource;
 import javax.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -241,6 +246,46 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
             throw new BusinessException(ErrorCode.NOT_AUTH);
         }
         return user;
+    }
+
+    @Override
+    public List<User> matchUsers(long num, User loginUser) {
+        QueryWrapper<User> queryWrapper = new QueryWrapper<>();
+        queryWrapper.select("id", "tags");
+        queryWrapper.isNotNull("tags");
+        // 优化查询，只查找标签与用户id
+        List<User> users = this.list(queryWrapper);
+        String tags = loginUser.getTags();
+        Gson gson = new Gson();
+        List<String> tagList = gson.fromJson(tags, new TypeToken<List<String>>() {}.getType());
+        List<Pair<User, Long>> list = new ArrayList<>();
+        for (User user : users) {
+            String userTags = user.getTags();
+            if (StringUtils.isBlank(userTags) || loginUser.getId() == user.getId()) {
+                continue;
+            }
+            List<String> userTagList = gson.fromJson(userTags, new TypeToken<List<String>>() {
+            }.getType());
+            long distance = AlgorithmUtils.minDistance(tagList, userTagList);
+            list.add(new Pair<>(user, distance));
+        }
+        // 找出最匹配的num个用户
+        List<Pair<User, Long>> topUserPair = list.stream().
+                sorted((a, b) -> (int) (a.getValue() - b.getValue())).limit(num).
+                collect(Collectors.toList());
+        // 最匹配的num个用户的id
+        List<Long> topIdList = topUserPair.stream().map(a -> a.getKey().getId()).collect(Collectors.toList());
+        QueryWrapper<User> userQueryWrapper = new QueryWrapper<>();
+        userQueryWrapper.in("id", topIdList);
+        // 匹配用户的脱敏信息
+        Map<Long, List<User>> userMap = this.list(userQueryWrapper).stream().
+                map(this::getSafeUser).collect(Collectors.groupingBy(User::getId));
+        ArrayList<User> result = new ArrayList<>();
+        // 按匹配顺序输出
+        for (Long id : topIdList) {
+            result.add(userMap.get(id).get(0));
+        }
+        return result;
     }
 }
 
