@@ -51,21 +51,6 @@ onMounted(async () => {
   }
 })
 
-// const mockUser = ref({
-//   id: 2222,
-//   username: 'Willow',
-//   userAccount: 'Willow',
-//   profile: '大家好',
-//   gender: 1,
-//   phone: '4652212365',
-//   email: 'aaa@qq.com',
-//   webId: '232',
-//   avatarUrl: 'https://xingqiu-tuchuang-1256524210.cos.ap-shanghai.myqcloud.com/shayu931/shayu.png',
-//   tags: ['Java', 'emo', '打工中', 'emo', '打工中'],
-//   createTime: new Date(),
-// })
-
-// const userList = ref({mockUser});
 
 </script>
 

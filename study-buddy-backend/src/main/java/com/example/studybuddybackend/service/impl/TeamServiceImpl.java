@@ -19,6 +19,8 @@ import com.example.studybuddybackend.mapper.TeamMapper;
 import com.example.studybuddybackend.service.UserService;
 import com.example.studybuddybackend.service.UserTeamService;
 import org.apache.commons.lang3.StringUtils;
+import org.redisson.api.RLock;
+import org.redisson.api.RedissonClient;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +33,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 import static com.example.studybuddybackend.constant.UserConstant.SALT;
 
@@ -47,6 +50,9 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
 
     @Resource
     UserService userService;
+
+    @Resource
+    RedissonClient redissonClient;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -124,7 +130,8 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
     }
 
     @Override
-    public List<TeamUserVO> listTeams(TeamQuery teamQuery, boolean isAdmin) {
+    public List<TeamUserVO> listTeams(TeamQuery teamQuery, User loginUser) {
+        boolean isAdmin = userService.isAdmin(loginUser);
         QueryWrapper<Team> queryWrapper = new QueryWrapper<>();
         if (teamQuery != null) {
             Long id = teamQuery.getId();
@@ -156,9 +163,6 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
             if (teamStatusEnum == null) {
                 teamStatusEnum = TeamStatusEnum.PUBLIC;
             }
-            if (TeamStatusEnum.PRIVATE.equals(teamStatusEnum) && !isAdmin) {
-                throw new BusinessException(ErrorCode.NOT_AUTH);
-            }
             queryWrapper.eq("status", teamStatusEnum.getValue());
             Long userId = teamQuery.getUserId();
             if (userId != null && userId >= 0) {
@@ -181,6 +185,12 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
                 UserVO userVO = new UserVO();
                 BeanUtils.copyProperties(user, userVO);
                 teamUserVO.setCreatorVO(userVO);
+                teamUserVO.setHasJoinNum((int) getTeamUserNum(teamUserVO.getId()));
+            }
+            Integer status = team.getStatus();
+            TeamStatusEnum teamStatusEnum = TeamStatusEnum.getEnumByValue(status);
+            if (TeamStatusEnum.PRIVATE.equals(teamStatusEnum) && !isAdmin && team.getUserId() != loginUser.getId()) {
+                continue;
             }
             list.add(teamUserVO);
         }
@@ -216,6 +226,8 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
                 UserVO userVO = new UserVO();
                 BeanUtils.copyProperties(user, userVO);
                 teamUserVO.setCreatorVO(userVO);
+                long teamId = getTeamUserNum(teamUserVO.getId());
+                teamUserVO.setHasJoinNum((int) getTeamUserNum(teamId));
             }
             list.add(teamUserVO);
         }
@@ -255,10 +267,7 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean joinTeam(TeamJoinRequest teamJoinRequest, User loginUser) {
-        final Long userId = teamJoinRequest.getUserId();
-        if (userId != loginUser.getId()) {
-            throw new BusinessException(ErrorCode.NOT_AUTH);
-        }
+        Long userId = loginUser.getId();
         Long teamId = teamJoinRequest.getTeamId();
         if (teamId == null || teamId <= 0) {
             throw new BusinessException(ErrorCode.NULL_ERROR);
@@ -284,29 +293,45 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
                 throw new BusinessException(ErrorCode.PARAMS_ERROR, "密码错误");
             }
         }
-        
-        QueryWrapper<UserTeam> queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("user_id", userId);
-        long hasJoinNum = userTeamService.count(queryWrapper);
-        if (hasJoinNum >= 5) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "最多创建和加入5个队伍");
+        // 避免一个用户多次加入一个相同队伍
+        RLock userLock = redissonClient.getLock("study_buddy:join_team:user_id:" + userId);
+        try {
+            // 抢到锁并执行
+            while (true) {
+                if (userLock.tryLock(0, -1, TimeUnit.MILLISECONDS)) {
+                    QueryWrapper<UserTeam> queryWrapper = new QueryWrapper<>();
+                    queryWrapper.eq("user_id", userId);
+                    long hasJoinNum = userTeamService.count(queryWrapper);
+                    if (hasJoinNum >= 5) {
+                        throw new BusinessException(ErrorCode.PARAMS_ERROR, "最多创建和加入5个队伍");
+                    }
+                    queryWrapper = new QueryWrapper<>();
+                    queryWrapper.eq("user_id", userId);
+                    queryWrapper.eq("team_id", teamId);
+                    long hasUserJoinTeam = userTeamService.count(queryWrapper);
+                    if (hasUserJoinTeam > 0) {
+                        throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户已加入该队伍");
+                    }
+                    long teamUserNum = getTeamUserNum(teamId);
+                    if (teamUserNum >= team.getMaxNum()) {
+                        throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍已满，无法加入");
+                    }
+                    UserTeam userTeam = new UserTeam();
+                    userTeam.setUserId(userId);
+                    userTeam.setTeamId(teamId);
+                    userTeam.setJoinTime(new Date());
+                    return userTeamService.save(userTeam);
+                }
+            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+            return false;
+        } finally {
+            if (userLock.isHeldByCurrentThread()) {
+                System.out.println("unLock: " + Thread.currentThread().getId());
+                userLock.unlock();
+            }
         }
-        queryWrapper = new QueryWrapper<>();
-        queryWrapper.eq("user_id", userId);
-        queryWrapper.eq("team_id", teamId);
-        long hasUserJoinTeam = userTeamService.count(queryWrapper);
-        if (hasUserJoinTeam > 0) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "用户已加入该队伍");
-        }
-        long teamUserNum = getTeamUserNum(teamId);
-        if (teamUserNum >= team.getMaxNum()) {
-            throw new BusinessException(ErrorCode.PARAMS_ERROR, "队伍已满，无法加入");
-        }
-        UserTeam userTeam = new UserTeam();
-        userTeam.setUserId(userId);
-        userTeam.setTeamId(teamId);
-        userTeam.setJoinTime(new Date());
-        return userTeamService.save(userTeam);
     }
 
     @Override
@@ -375,6 +400,12 @@ public class TeamServiceImpl extends ServiceImpl<TeamMapper, Team> implements Te
         return this.removeById(id);
     }
 
+    /**
+     * 获取此队伍当前人数
+     *
+     * @param teamId 队伍id
+     * @return 队伍人数
+     */
     private long getTeamUserNum(Long teamId) {
         QueryWrapper<UserTeam> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("team_id", teamId);

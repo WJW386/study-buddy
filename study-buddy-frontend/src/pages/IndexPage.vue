@@ -1,67 +1,90 @@
 <template>
-  <user-card-list :user-list = "userList"/>
-  <van-empty v-if="!userList || userList.length < 1" description="搜索结果为空"/>
+  <van-cell center title="心动模式">
+    <template #right-icon>
+      <van-switch v-model="isMatchMode" size="24" />
+    </template>
+  </van-cell>
+  <user-card-list :user-list="userList" :loading="loading"/>
+  <van-empty v-if="!userList || userList.length < 1" description="数据为空" />
 </template>
 
-<script setup >
-import {onMounted, ref} from "vue";
+<script setup lang="ts">
+import {ref, watchEffect} from "vue";
 import {useRoute} from "vue-router";
-import qs from 'qs';
-import myAxios from "../plugins/myAxios.ts";
 import {Toast} from "vant";
+
+import myAxios from "../plugins/myAxios";
 import UserCardList from "../components/UserCardList.vue";
+import {UserType} from "../models/user";
 
 const route = useRoute();
 const {tags} = route.query;
 
 
+
 const userList = ref([]);
 
+const isMatchMode = ref<boolean>(false);
+const loading = ref(true);
 
-onMounted(async () => {
-  // 为给定 ID 的 user 创建请求
-  const userListData = await myAxios.get('/user/recommend',{
-    withCredentials: true,
-    params: {
-      pageSize: 6,
-      pageNum: 1,
-    },
+/**
+ * 加载数据
+ */
+const loadData = async () => {
+  let userListData;
+  loading.value = true;
+  //心动模式
+  if (isMatchMode.value){
+    const  num = 10;
+    userListData = await myAxios.get('user/match',{
+      params: {
+        num,
+      },
+    })
+        .then(function (response) {
+          console.log('/user/match succeed',response);
+          Toast.success('请求成功');
+          return response?.data;
+        })
+        .catch(function (error) {
+          console.log('/user/match error',error);
+          Toast.fail('请求失败');
+        });
+  }else {
+    //普通用户使用分页查询
+    userListData = await  myAxios.get('/user/recommend',{
+      params: {
+        pageSize: 8,
+        pageNum: 1,
+      },
+    })
+        .then(function (response) {
+          console.log('/user/recommend succeed', response);
+          Toast.success('请求成功');
+          return response?.data?.records;
+        })
+        .catch(function (error) {
+          console.log('/user/recommends error',error);
+          Toast.fail('请求失败');
+        });
 
-  })
-      .then(function (response) {
-        console.log('/user/recommend/ succeed',response);
-        Toast.success('请求成功');
-        return response?.data?.records;
-      })
-      .catch(function (error) {
-        console.log('/user/recommend/ error',error);
-        Toast.fail('请求失败');
-      });
+  }
   if (userListData){
-    userListData.forEach(user =>{
+    userListData.forEach((user: UserType) =>{
       if (user.tags){
         user.tags = JSON.parse(user.tags);
       }
     })
     userList.value = userListData;
   }
+  loading.value = false;
+}
+
+watchEffect(() =>{
+  loadData();
 })
 
-// const mockUser = ref({
-//   id: 2222,
-//   username: 'Willow',
-//   userAccount: 'Willow',
-//   profile: '大家好',
-//   gender: 1,
-//   phone: '4652212365',
-//   email: 'aaa@qq.com',
-//   webId: '232',
-//   avatarUrl: 'https://xingqiu-tuchuang-1256524210.cos.ap-shanghai.myqcloud.com/shayu931/shayu.png',
-//   tags: ['Java', 'emo', '打工中', 'emo', '打工中'],
-//   createTime: new Date(),
-// })
 
-// const userList = ref({mockUser});
 
 </script>
 

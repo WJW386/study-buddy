@@ -32,10 +32,10 @@ public interface TeamService extends IService<Team> {
      * 查询符合TeamQuery条件的队伍
      *
      * @param teamQuery 前端发送的查询队伍条件
-     * @param isAdmin 是否为管理员
+     * @param loginUser 登录用户
      * @return 队伍和创建者信息的封装list
      */
-    List<TeamUserVO> listTeams(TeamQuery teamQuery, boolean isAdmin);
+    List<TeamUserVO> listTeams(TeamQuery teamQuery, User loginUser);
 
     /**
      * 查询用户加入或创建的队伍

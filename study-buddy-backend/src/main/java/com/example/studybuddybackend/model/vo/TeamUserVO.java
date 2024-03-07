@@ -22,7 +22,6 @@ public class TeamUserVO implements Serializable {
     /**
      * id
      */
-    @TableId(type = IdType.AUTO)
     private Long id;
 
     /**

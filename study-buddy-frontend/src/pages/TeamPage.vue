@@ -4,8 +4,9 @@
     <van-tabs v-model:active="active" @change="onTabChange">
       <van-tab title="公开" name="public" />
       <van-tab title="加密" name="private" />
+      <van-tab title="私有" name="secret" />
     </van-tabs>
-    <div style="margin-bottom: 16px" />
+    <div style="margin-bottom: 5px" />
     <van-button class="add-button" type="primary" icon="plus" @click="toAddTeam" />
     <team-card-list :teamList="teamList" />
     <van-empty v-if="teamList?.length < 1" description="数据为空"/>
@@ -24,6 +25,7 @@ const active = ref('public')
 const router = useRouter();
 const searchText = ref('');
 
+
 /**
  * 切换查询状态
  * @param name
@@ -32,9 +34,12 @@ const onTabChange = (name) => {
   // 查公开
   if (name === 'public') {
     listTeam(searchText.value, 0);
-  } else {
+  } else if (name === 'private'){
     // 查加密
     listTeam(searchText.value, 2);
+  }
+  else {
+    listTeam(searchText.value, 1);
   }
 }
 

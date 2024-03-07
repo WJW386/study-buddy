@@ -18,6 +18,7 @@ import com.example.studybuddybackend.service.UserService;
 import com.example.studybuddybackend.service.UserTeamService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
+import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
@@ -26,6 +27,7 @@ import java.awt.desktop.QuitEvent;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
@@ -90,8 +92,22 @@ public class TeamController {
         if (teamQuery == null) {
             throw new BusinessException(ErrorCode.NULL_ERROR);
         }
-        boolean isAdmin = userService.isAdmin(request);
-        List<TeamUserVO> teamList = teamService.listTeams(teamQuery, isAdmin);
+        User loginUser = userService.getLoginUser(request);
+        List<TeamUserVO> teamList = teamService.listTeams(teamQuery, loginUser);
+        List<Long> teamIdList = teamList.stream().map(TeamUserVO::getId).collect(Collectors.toList());
+        QueryWrapper<UserTeam> queryWrapper = new QueryWrapper<>();
+        try {
+            queryWrapper.eq("user_id", loginUser.getId());
+            queryWrapper.in("team_id", teamIdList);
+            List<UserTeam> userTeamList = userTeamService.list(queryWrapper);
+            Set<Long> hasJoinTeamSet = userTeamList.stream().map(UserTeam::getTeamId).collect(Collectors.toSet());
+            for (TeamUserVO teamUserVO : teamList) {
+                boolean hasJoin = hasJoinTeamSet.contains(teamUserVO.getId());
+                teamUserVO.setHasJoin(hasJoin);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
         return ResultUtils.success(teamList);
     }
 

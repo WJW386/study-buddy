@@ -205,7 +205,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     public int updateUser(User user, User loginUser) {
         // 如果用户没有传任何要更新的值，就直接报错，不用执行 update 语句
         if (user.getUsername() == null && user.getEmail() == null && user.getAvatarUrl() == null
-            && user.getPhone() == null) {
+            && user.getPhone() == null && user.getTags() == null) {
             throw new BusinessException(ErrorCode.PARAMS_ERROR);
         }
         long id = user.getId();
@@ -226,12 +226,12 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
     public boolean isAdmin(HttpServletRequest request) {
         Object userObj = request.getSession().getAttribute(USER_LOGIN_STATE);
         User user = (User) userObj;
-        return user != null || user.getUserRole() == ADMIN_ROLE;
+        return user != null && user.getUserRole() == ADMIN_ROLE;
     }
 
     @Override
     public boolean isAdmin(User user) {
-        return user != null || user.getUserRole() == ADMIN_ROLE;
+        return user != null && user.getUserRole() == ADMIN_ROLE;
     }
 
     @Override
